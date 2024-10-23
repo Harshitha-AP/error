@@ -171,3 +171,16 @@ def action_create_purchase_order(self):
                     print(f"Purchase Order Line created for {record.product_id.name}")
                 
     return True
+
+                        </notebook>
+                        <div name="button_box" position="inside">
+                            <button class="oe_stat_button" type="object" name="get_po" icon="fa-shopping-bag">
+                                <field string="Purchase Order" name="po_count" widget="statinfo"/>
+                            </button>
+                            <button class="oe_stat_button" type="object" name="get_internal_transfer" icon="fa-snowflake-o">
+                                <field string="Internal Transfer" name="internal_transfer_count" widget="statinfo"/>
+                            </button>
+                        </div>
+                    </sheet>
+                </form>
+            
