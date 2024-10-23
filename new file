@@ -134,3 +134,40 @@ def action_second_approval(self):
                 
     return True
 
+def action_create_purchase_order(self):
+    """Create Purchase Order based on RFQ"""
+    for record in self.rfq_product_ids:
+        # Check if the selection field is 'purchase_order'
+        if record.get_by == 'purchase_order':
+            print("Creating Purchase Order for:", record.product_id.name)
+            
+            # Create Purchase Order (purchase.order)
+            po_values = {
+                'partner_id': record.vendor_id.id,  # Vendor
+                'date_order': fields.Datetime.now(),  # Current date and time
+                'origin': self.name,  # Reference from your RFQ
+                'company_id': self.env.company.id,  # Optional, if multi-company setup
+                'currency_id': record.vendor_id.currency_id.id,  # Currency
+            }
+            purchase_order = self.env['purchase.order'].sudo().create(po_values)
+            
+            if purchase_order:
+                record.get_by = 'purchase_order'
+                
+                # Create Purchase Order Lines (purchase.order.line) for the products
+                po_line_values = {
+                    'order_id': purchase_order.id,  # Link to the created PO
+                    'product_id': record.product_id.id,  # Product
+                    'name': record.product_id.name,  # Product description
+                    'product_qty': record.product_qty,  # Quantity
+                    'product_uom': record.product_id.uom_id.id,  # UoM (Unit of Measure)
+                    'price_unit': record.product_id.standard_price,  # Unit price (optional, can be fetched from vendor pricelist)
+                    'date_planned': fields.Datetime.now(),  # Expected delivery date
+                    'account_analytic_id': False,  # Add analytic account if needed
+                }
+                po_line = self.env['purchase.order.line'].sudo().create(po_line_values)
+                
+                if po_line:
+                    print(f"Purchase Order Line created for {record.product_id.name}")
+                
+    return True
