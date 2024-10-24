@@ -1,186 +1,24 @@
-def action_second_approval(self):
-    """Actions while clicking the submit button"""
-    self.write({'state': 'second_approval'})
-    for record in self.rfq_product_ids:
-        print("hello", record.read())
+show_po_button = fields.Boolean(compute="_compute_show_po_button")
+    show_internal_transfer_button = fields.Boolean(compute="_compute_show_internal_transfer_button"
 
-        # Creating the stock move values
-        move_vals = {
-            'name': record.product_id.name,
-            'product_id': record.product_id.id,
-            'product_uom_qty': record.product_uom_qty,
-            'product_uom': record.product_id.uom_id.id,
-            'location_id': record.source_location.id,
-            'location_dest_id': record.destination_location.id,
-        }
+    @api.depends('rfq_product_ids.get_by')
+    def _compute_show_po_button(self):
+        for record in self:
+            record.show_po_button = any(line.get_by == 'purchase_order' for line in record.rfq_product_ids)
 
-        # Creating the stock picking (internal transfer)
-        picking_vals = {
-            'location_id': record.source_location.id,
-            'location_dest_id': record.destination_location.id,
-            'partner_id': self.employee_id.id,  # Use vendor_id or employee_id based on your logic
-            'move_type': 'direct',
-            'picking_type_id': self.env.ref('stock.picking_type_internal').id,
-            'move_ids_without_package': [(0, 0, move_vals)]
-        }
-        
-        transfer = self.env['stock.picking'].sudo().create(picking_vals)
-        if transfer:
-            record.get_by = 'internal_transfer'
+    @api.depends('rfq_product_ids.get_by')
+    def _compute_show_internal_transfer_button(self):
+        for record in self:
+            record.show_internal_transfer_button = any(line.get_by == 'internal_transfer' for line in record.rfq_product_ids)
 
 
-class MaterialRfqProduct(models.Model):
-    _name = "material.rfq.product"
-    _description = "Material Rfq Product"
-
-    product_order_line = fields.Many2one('material.rfq', string="Product Order Line")
-    product_id = fields.Many2one('product.product', string="Product")
-    product_uom_qty = fields.Float(string="Quantity")
-    product_uom = fields.Many2one('uom.uom', string="Unit of Measure")
-    source_location = fields.Many2one('stock.location', string="Source Location")
-    destination_location = fields.Many2one('stock.location', string="Destination Location")
-    get_by = fields.Selection([
-        ('purchase_order', 'Purchase Order'),
-        ('internal_transfer', 'Internal Transfer')
-    ], string="Get By")
-
-
-
-def action_second_approval(self):
-    """Actions while clicking the submit button"""
-    self.write({'state': 'second_approval'})
-    for record in self.rfq_product_ids:
-        if record.get_by == 'internal_transfer':
-            # Creating stock move values
-            move_vals = {
-                'name': record.product_id.name,
-                'product_id': record.product_id.id,
-                'product_uom_qty': record.product_uom_qty,
-                'product_uom': record.product_id.uom_id.id,
-                'location_id': record.source_location.id,
-                'location_dest_id': record.destination_location.id,
-            }
-
-            # Creating stock picking (internal transfer)
-            picking_vals = {
-                'location_id': record.source_location.id,
-                'location_dest_id': record.destination_location.id,
-                'partner_id': self.employee_id.id,  # Use vendor_id or employee_id based on your logic
-                'move_type': 'direct',
-                'picking_type_id': self.env.ref('stock.picking_type_internal').id,
-                'move_ids_without_package': [(0, 0, move_vals)]
-            }
-            transfer = self.env['stock.picking'].sudo().create(picking_vals)
-            if transfer:
-                record.get_by = 'internal_transfer'
-
-        elif record.get_by == 'purchase_order':
-            # Creating purchase order line values
-            order_line_vals = {
-                'product_id': record.product_id.id,
-                'product_uom_qty': record.product_uom_qty,
-                'product_uom': record.product_id.uom_id.id,
-                'price_unit': record.product_id.standard_price,  # or any other price calculation
-                'name': record.product_id.name,
-            }
-
-            # Creating purchase order
-            order_vals = {
-                'partner_id': self.vendor_id.id,
-                'date_order': fields.Date.today(),
-                'order_line': [(0, 0, order_line_vals)],
-                'origin': self.name,
-            }
-            order = self.env['purchase.order'].sudo().create(order_vals)
-            if order:
-                record.get_by = 'purchase_order'
-
-
-def action_second_approval(self):
-    """Actions while clicking the submit button"""
-    self.write({'state': 'second_approval'})
-
-    for record in self.rfq_product_ids:
-        print("hello", record.read())
-        
-        # Create the picking (internal transfer)
-        picking_values = {
-            'location_id': record.source_location_id.id,
-            'location_dest_id': record.destination_location_id.id,
-            'partner_id': record.vendor_id.id,  # Optional for internal transfer
-            'move_type': 'direct',
-            'picking_type_id': 5,  # Make sure this picking type is correct
-        }
-        picking = self.env['stock.picking'].sudo().create(picking_values)
-        
-        if picking:
-            record.get_by = 'internal_transfer'
-            
-            # Create the stock moves corresponding to the products in the RFQ
-            stock_move_values = {
-                'name': record.product_id.name,
-                'product_id': record.product_id.id,
-                'product_uom_qty': record.product_qty,  # Ensure this field holds product quantity
-                'product_uom': record.product_id.uom_id.id,  # Unit of Measure (UoM)
-                'location_id': record.source_location_id.id,
-                'location_dest_id': record.destination_location_id.id,
-                'picking_id': picking.id,  # Link the move to the created picking
-                'state': 'draft',  # Stock moves start in the draft state
-            }
-            stock_move = self.env['stock.move'].sudo().create(stock_move_values)
-            
-            if stock_move:
-                print(f"Stock Move created: {stock_move.name}")
-                
-    return True
-
-def action_create_purchase_order(self):
-    """Create Purchase Order based on RFQ"""
-    for record in self.rfq_product_ids:
-        # Check if the selection field is 'purchase_order'
-        if record.get_by == 'purchase_order':
-            print("Creating Purchase Order for:", record.product_id.name)
-            
-            # Create Purchase Order (purchase.order)
-            po_values = {
-                'partner_id': record.vendor_id.id,  # Vendor
-                'date_order': fields.Datetime.now(),  # Current date and time
-                'origin': self.name,  # Reference from your RFQ
-                'company_id': self.env.company.id,  # Optional, if multi-company setup
-                'currency_id': record.vendor_id.currency_id.id,  # Currency
-            }
-            purchase_order = self.env['purchase.order'].sudo().create(po_values)
-            
-            if purchase_order:
-                record.get_by = 'purchase_order'
-                
-                # Create Purchase Order Lines (purchase.order.line) for the products
-                po_line_values = {
-                    'order_id': purchase_order.id,  # Link to the created PO
-                    'product_id': record.product_id.id,  # Product
-                    'name': record.product_id.name,  # Product description
-                    'product_qty': record.product_qty,  # Quantity
-                    'product_uom': record.product_id.uom_id.id,  # UoM (Unit of Measure)
-                    'price_unit': record.product_id.standard_price,  # Unit price (optional, can be fetched from vendor pricelist)
-                    'date_planned': fields.Datetime.now(),  # Expected delivery date
-                    'account_analytic_id': False,  # Add analytic account if needed
-                }
-                po_line = self.env['purchase.order.line'].sudo().create(po_line_values)
-                
-                if po_line:
-                    print(f"Purchase Order Line created for {record.product_id.name}")
-                
-    return True
-
-                        </notebook>
                         <div name="button_box" position="inside">
-                            <button class="oe_stat_button" type="object" name="get_po" icon="fa-shopping-bag">
+                            <button class="oe_stat_button" type="object" name="get_po" icon="fa-shopping-bag" 
+                                attrs="{'invisible': [('show_po_button', '=', False)]}">
                                 <field string="Purchase Order" name="po_count" widget="statinfo"/>
                             </button>
-                            <button class="oe_stat_button" type="object" name="get_internal_transfer" icon="fa-snowflake-o">
+                            <button class="oe_stat_button" type="object" name="get_internal_transfer" icon="fa-snowflake-o" 
+                                attrs="{'invisible': [('show_internal_transfer_button', '=', False)]}">
                                 <field string="Internal Transfer" name="internal_transfer_count" widget="statinfo"/>
                             </button>
-                        </div>
-                    </sheet>
-                </form>
-            
+                        
