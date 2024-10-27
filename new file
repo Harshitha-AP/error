@@ -22,3 +22,37 @@ show_po_button = fields.Boolean(compute="_compute_show_po_button")
                                 <field string="Internal Transfer" name="internal_transfer_count" widget="statinfo"/>
                             </button>
                         
+
+
+
+
+show_po_button = fields.Boolean(default=False)
+    show_internal_transfer_button = fields.Boolean(default=False
+
+                        })
+                    ],
+                    'origin': self.name,
+                }
+                transfer = self.env['stock.picking'].create(picking_vals)
+                if transfer:
+                    record.get_by = 'internal_transfer'
+                    self.show_internal_transfer_button = 
+
+})
+                        ],
+                        'origin': self.name,
+                    }
+                    order = self.env['purchase.order'].create(order_vals)
+                    if order:
+                        record.get_by = 'purchase_order'
+                        self.show_po_button = True
+
+
+<button class="oe_stat_button" type="object" name="get_po" icon="fa-shopping-bag"
+                                invisible="not show_po_button">
+                                <field string="Purchase Order" name="po_count" widget="statinfo"/>
+                            </button>
+                            <button class="oe_stat_button" type="object" name="get_internal_transfer" icon="fa-snowflake-o"
+                                invisible="not show_internal_transfer_button">
+                                <field string="Internal Transfer" name="internal_transfer_count" widget="statinfo"/>
+                            
